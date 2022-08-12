@@ -1,9 +1,11 @@
 #include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <dirent.h>
+#include <sys/stat.h>
 
 #define RESIZE(array_, size_)                               \
   do {                                                      \
@@ -137,9 +139,7 @@ int enum_folder(str_t path, void *user_data,
     if (entry == NULL)
       break;
 
-    if (strcmp(".", entry->d_name) == 0)
-      continue;
-    if (strcmp("..", entry->d_name) == 0)
+    if (entry->d_name[0] == '.')
       continue;
 
     if (eval != NULL) {
@@ -152,6 +152,19 @@ int enum_folder(str_t path, void *user_data,
   closedir(directory);
 
   return STATUS_OK;
+}
+
+typedef struct {
+  uint64_t sec;
+  unsigned nsec;
+} sec_nsec_t;
+
+sec_nsec_t get_mod_time(str_t path) {
+  struct stat s;
+  stat(path.values, &s);
+  sec_nsec_t t = { .sec  = (uint64_t) s.st_mtim.tv_sec,
+                   .nsec = s.st_mtim.tv_nsec };
+  return t;
 }
 
 dep_tree_t eval_folder(str_t path);
@@ -215,10 +228,12 @@ void print(dep_tree_t tree, int depth) {
 
   str_t path_full = { .size   = tree.path.size,
                       .values = tree.path.values };
-  str_t path      = path_split(path_full, -1);
+  str_t name      = path_split(path_full, -1);
 
-  printf("%.*s%*c: %s\n", path.size, path.values,
-         20 - depth - path.size, ' ', tree.path.values);
+  uint64_t time = get_mod_time(path_full).sec % 10000000;
+
+  printf("%.*s%*c:%7llu %s\n", name.size, name.values,
+         20 - depth - name.size, ' ', time, tree.path.values);
 
   for (ptrdiff_t i = 0; i < tree.children.size; i++)
     print(tree.children.values[i], depth + 2);
