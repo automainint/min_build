@@ -492,16 +492,16 @@ sec_nsec_t get_mod_time(str_t path) {
   return t;
 }
 
-void print(dep_node_t tree, int indent) {
+void print_dump(dep_node_t tree, int indent) {
   switch (tree.type) {
-    case TYPE_FILE: printf(" : file   : "); break;
-    case TYPE_FOLDER: printf(" : folder : "); break;
-    case TYPE_ROOT: printf(" : root   : "); break;
-    case TYPE_HEADER: printf(" : header : "); break;
-    case TYPE_SOURCE: printf(" : source : "); break;
-    case TYPE_LIBRARY: printf(" : lib    : "); break;
-    case TYPE_EXECUTABLE: printf(" : exe    : "); break;
-    default: printf(" : ?      : ");
+    case TYPE_FILE: printf(": file   : "); break;
+    case TYPE_FOLDER: printf(": folder : "); break;
+    case TYPE_ROOT: printf(": root   : "); break;
+    case TYPE_HEADER: printf(": header : "); break;
+    case TYPE_SOURCE: printf(": source : "); break;
+    case TYPE_LIBRARY: printf(": lib    : "); break;
+    case TYPE_EXECUTABLE: printf(": exe    : "); break;
+    default: printf(": ?      : ");
   }
 
   if (indent > 0)
@@ -542,26 +542,35 @@ void print(dep_node_t tree, int indent) {
       unsigned long long time  = get_mod_time(out_s).sec % 10000000;
       printf(": %-7llu %-41.*s:", time, (int) out_s.size,
              out_s.values);
-    }
+
+    } break;
+    default:
+      printf(":                                                  :");
   }
 
   printf("\n");
 
   for (ptrdiff_t i = 0; i < tree.children.size; i++)
-    print(tree.children.values[i], indent + 2);
+    print_dump(tree.children.values[i], indent + 2);
 }
 
 int main(int argc, char **argv) {
+  int   dump = 0;
   str_t path = WRAP_STR("./source");
 
-  if (argc == 2) {
-    path.size   = strlen(argv[1]);
-    path.values = argv[1];
+  for (int i = 1; i < argc; i++) {
+    if (strcmp("--dump", argv[i]) == 0)
+      dump = 1;
+    else {
+      path.size   = strlen(argv[i]);
+      path.values = argv[i];
+    }
   }
 
   dep_node_t tree = eval_folder(path);
 
-  print(tree, 0);
+  if (dump)
+    print_dump(tree, 0);
 
   dep_node_destroy(tree);
 
